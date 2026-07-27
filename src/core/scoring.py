@@ -99,7 +99,12 @@ def score_job(client, title, company, location, description):
 
 
 def run_scoring(conn, client, limit=None):
-    """Score prefiltered, not-yet-scored jobs; update rows in place."""
+    """Score prefiltered, not-yet-scored jobs; update rows in place.
+
+    COMMITS PER ROW -- the one writer that keeps its own boundary. See the
+    comment at the commit for why the caller-owns-the-boundary rule does
+    not apply here.
+    """
     sql = ("SELECT id, title, company, location, description FROM jobs "
            "WHERE prefilter_pass = 1 AND relevance_score IS NULL")
     if limit:
@@ -113,9 +118,14 @@ def run_scoring(conn, client, limit=None):
             row["location"], row["description"],
         )
         conn.execute(
-            "UPDATE jobs SET relevance_score = ?, score_reason = ? WHERE id = ?",
+            "UPDATE jobs SET relevance_score = %s, score_reason = %s WHERE id = %s",
             (result["score"], result["reason"], row["id"]),
         )
+        # Deliberate exception to the caller-owns-the-boundary rule: each
+        # iteration is a PAID model call, so per-row durability outranks
+        # composability -- a crash at row 15 keeps 14 scores instead of
+        # losing all 15 and paying twice. Do NOT wrap run_scoring in
+        # conn.transaction(): psycopg forbids an inner commit there.
         conn.commit()                                 # checkpoint per row
         scored += 1
         print(f"  [{result['score']:3d}] {row['title']} -- {result['reason']}")
@@ -128,6 +138,9 @@ if __name__ == "__main__":
     load_dotenv()                 # ANTHROPIC_API_KEY -> environment
     client = Anthropic()          # SDK reads the key from the environment
 
-    with get_connection() as conn:
-        summary = run_scoring(conn, client)   # first: one job only
+    conn = get_connection()
+    try:
+        summary = run_scoring(conn, client, limit=1)   # smoke test: one job only
         print(f"[scoring] scored {summary['scored']} job(s)")
+    finally:
+        conn.close()
