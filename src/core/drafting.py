@@ -242,11 +242,11 @@ def run_drafting(conn, client, profile_text, limit=None, min_score=None):
         min_score = MIN_SCORE
 
     sql = ("SELECT id, title, company, location, description FROM jobs "
-           "WHERE relevance_score >= ? AND status = 'new' "
+           "WHERE relevance_score >= %s AND status = 'new' "
            "ORDER BY relevance_score DESC, id")
     params = [min_score]
     if limit is not None:
-        sql += " LIMIT ?"
+        sql += " LIMIT %s"
         params.append(int(limit))
     rows = conn.execute(sql, params).fetchall()
 
@@ -260,15 +260,24 @@ def run_drafting(conn, client, profile_text, limit=None, min_score=None):
             client, analysis, profile_text, row["title"], row["company"],
         )
         conn.execute(
-            "UPDATE jobs SET cover_letter = ? WHERE id = ?",
+            "UPDATE jobs SET cover_letter = %s WHERE id = %s",
             (letter, row["id"]),
         )
         try:
             transition(conn, row["id"], "drafted")
         except TransitionError:
+            # This rollback is load-bearing under the caller-owned commit
+            # boundary: _apply_transition's block is a SAVEPOINT here (the
+            # UPDATE above already opened the transaction), so releasing it
+            # does not commit. Without this rollback the orphan cover_letter
+            # UPDATE would survive to the next commit.
             conn.rollback()
             raise
 
+        # Deliberate exception to the caller-owned-commit rule: every row is a paid
+        # Sonnet call, so per-row durability outranks composability. This commits
+        # letter + status + status_updated_at + event as one unit. Do not wrap
+        # run_drafting in conn.transaction().
         conn.commit()                                 # checkpoint per row
         drafted += 1
         print(f"  [drafted] {row['company']} -- {row['title']} "
@@ -279,7 +288,7 @@ def run_drafting(conn, client, profile_text, limit=None, min_score=None):
 if __name__ == "__main__":
     from dotenv import load_dotenv
 
-    load_dotenv()                 # ANTHROPIC_API_KEY -> environment
+    load_dotenv()                 # ANTHROPIC_API_KEY + DATABASE_URL -> environment
     client = Anthropic()          # SDK reads the key from the environment
     profile = load_profile()
 
@@ -288,6 +297,9 @@ if __name__ == "__main__":
     # on the full pool); no arg = full batch.
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else None
 
-    with get_connection() as conn:
+    conn = get_connection()
+    try:
         summary = run_drafting(conn, client, profile, limit=limit)
+    finally:
+        conn.close()
     print(f"[drafting] drafted {summary['drafted']} job(s)")
