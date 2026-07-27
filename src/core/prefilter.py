@@ -76,7 +76,14 @@ def evaluate(title: str | None, location: str | None) -> dict:
 
 
 def run_prefilter(conn) -> dict:
-    """Evaluate jobs not yet prefiltered; update rows in place."""
+    """Evaluate jobs not yet prefiltered; update rows in place.
+
+    Does NOT commit -- the caller owns the transaction boundary. A function
+    that commits internally can never be composed inside a larger
+    transaction (psycopg raises), and every caller must commit before
+    close: psycopg rolls back on close, so the failure mode is silent
+    persistence loss, not an error.
+    """
     rows = conn.execute(
         "SELECT id, title, location FROM jobs WHERE prefilter_pass IS NULL"
     ).fetchall()
@@ -85,18 +92,19 @@ def run_prefilter(conn) -> dict:
     for row in rows:
         verdict = evaluate(row["title"], row["location"])
         conn.execute(
-            "UPDATE jobs SET prefilter_pass = ?, ladder_match = ? WHERE id = ?",
+            "UPDATE jobs SET prefilter_pass = %s, ladder_match = %s WHERE id = %s",
             (verdict["prefilter_pass"], verdict["ladder_match"], row["id"]),
         )
         passed += verdict["prefilter_pass"]
         failed += 1 - verdict["prefilter_pass"]
-    conn.commit()
     return {"processed": len(rows), "passed": passed, "failed": failed}
 
 
 if __name__ == "__main__":
-    with get_connection() as conn:
+    conn = get_connection()
+    try:
         s = run_prefilter(conn)
+        conn.commit()
         print(f"[prefilter] processed {s['processed']}: "
               f"{s['passed']} passed, {s['failed']} failed")
 
@@ -112,3 +120,5 @@ if __name__ == "__main__":
             "SELECT title, location FROM jobs WHERE prefilter_pass = 0 LIMIT 10"
         ):
             print(f"  {r['title']} ({r['location']})")
+    finally:
+        conn.close()

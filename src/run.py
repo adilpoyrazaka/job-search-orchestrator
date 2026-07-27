@@ -77,6 +77,7 @@ def run_all(skip_collect: bool = False, draft_limit: int | None = None,
     try:
         print("[run] === prefilter ===")
         totals["prefilter"] = run_prefilter(conn)
+        conn.commit()   # run.py owns prefilter's boundary now
 
         print("[run] === score ===")
         totals["score"] = run_scoring(conn, client)
@@ -85,7 +86,7 @@ def run_all(skip_collect: bool = False, draft_limit: int | None = None,
         totals["draft"] = run_drafting(conn, client, profile, limit=draft_limit,
                                        min_score=min_score)
     finally:
-        conn.close()  # explicit close; stages commit their own writes
+        conn.close()  # explicit close; run.py commits prefilter, scoring/drafting still commit their own (pending port)
 
     print(f"[run] DONE: {totals}")
     return totals
