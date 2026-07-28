@@ -37,8 +37,8 @@ SQLITE_PATH = Path("data/jobs.db")
 PG_DSN = os.environ.get("PG_DSN", "postgresql:///orchestrator")
 ISTANBUL = ZoneInfo("Europe/Istanbul")
 
-EXPECTED_JOBS = 283
-EXPECTED_EVENTS = 10
+EXPECTED_JOBS = 440
+EXPECTED_EVENTS = 12
 
 JOB_COLS = [
     "id", "source", "external_id", "url", "title", "company", "category",
