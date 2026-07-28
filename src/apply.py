@@ -48,7 +48,7 @@ def confirm_and_apply(conn, job_id: int, note: str) -> bool:
     """
     row = conn.execute(
         "SELECT status, title, company, location, url, description "
-        "FROM jobs WHERE id = ?",
+        "FROM jobs WHERE id = %s",
         (job_id,),
     ).fetchone()
     if row is None:
@@ -134,12 +134,17 @@ def _main(argv: list[str]) -> int:
 
     conn = get_connection()
     try:
-        confirm_and_apply(conn, job_id, note)
+        if confirm_and_apply(conn, job_id, note):
+            # Caller owns the commit. The SELECT above opens the
+            # transaction, so _apply_transition's block is a SAVEPOINT
+            # here and releasing it does NOT commit. Without this the
+            # apply would report success and persist nothing.
+            conn.commit()
     except TransitionError as e:
         print(f"error: {e}")
         return 1
     finally:
-        conn.close()  # explicit close: the CM commits, it does not close
+        conn.close()  # explicit: no context manager owns this connection
     return 0
 
 
