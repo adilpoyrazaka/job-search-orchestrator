@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Search Orchestrator — public ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDEFE8;
+    --band:#DCE6D5;
+    --ink:#22251F;
+    --ink-soft:#5A6155;
+    --rule:#A8AFA0;
+    --signal:#1F4D3D;
+    --flag:#8C2F39;
+    --focus:#1F4D3D;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --display:"Bricolage Grotesque",var(--mono);
+  }
+
+  *{box-sizing:border-box}
+
+  html,body{margin:0;padding:0}
+
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:1140px;margin:0 auto;padding:0 20px 80px}
+
+  a{color:var(--signal)}
+
+  /* ---------- masthead ---------- */
+
+  .masthead{padding:44px 0 22px;border-bottom:2px solid var(--ink)}
+
+  .eyebrow{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);margin:0 0 14px
+  }
+
+  h1{
+    font-family:var(--display);
+    font-weight:800;
+    font-size:clamp(30px,5.4vw,54px);
+    line-height:1.02;
+    letter-spacing:-.02em;
+    margin:0 0 16px;
+    max-width:20ch;
+  }
+
+  .thesis{
+    max-width:62ch;margin:0;color:var(--ink-soft);font-size:14px;line-height:1.65
+  }
+  .thesis strong{color:var(--ink);font-weight:600}
+
+  /* ---------- counters ---------- */
+
+  .counts{
+    display:flex;flex-wrap:wrap;gap:26px;
+    padding:16px 0;border-bottom:1px solid var(--rule)
+  }
+  .count{display:flex;flex-direction:column;gap:2px}
+  .count b{font-family:var(--display);font-size:24px;font-weight:700;line-height:1}
+  .count span{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft)}
+
+  /* ---------- ledger table ---------- */
+
+  .toolbar{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    padding:14px 0;border-bottom:1px solid var(--rule)
+  }
+  .toolbar label{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft)}
+
+  input[type=search],select{
+    font:inherit;font-size:13px;background:transparent;color:var(--ink);
+    border:1px solid var(--rule);padding:6px 9px;border-radius:0;min-width:0
+  }
+  input[type=search]{flex:1 1 200px;max-width:320px}
+
+  table{width:100%;border-collapse:collapse;margin-top:2px}
+
+  thead th{
+    text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--ink-soft);
+    padding:12px 10px;border-bottom:1px solid var(--ink);white-space:nowrap
+  }
+
+  tbody tr{border-bottom:1px solid rgba(168,175,160,.45);cursor:pointer}
+  tbody tr:nth-child(odd){background:var(--band)}
+  tbody tr:hover,tbody tr:focus-visible{background:var(--ink);color:var(--paper);outline:none}
+  tbody tr:hover .muted,tbody tr:focus-visible .muted{color:rgba(237,239,232,.72)}
+  tbody tr:hover .sc,tbody tr:focus-visible .sc{color:var(--paper)}
+
+  td{padding:11px 10px;vertical-align:top}
+  .muted{color:var(--ink-soft)}
+  .sc{font-weight:600;font-variant-numeric:tabular-nums;color:var(--signal)}
+  .ttl{font-weight:500}
+  .nowrap{white-space:nowrap}
+
+  .flagmark{
+    color:var(--flag);font-weight:600;margin-left:6px;
+    border-bottom:1px dotted var(--flag);cursor:help
+  }
+  tbody tr:hover .flagmark,tbody tr:focus-visible .flagmark{color:#E8A0A8;border-color:#E8A0A8}
+
+  .pager{display:flex;gap:10px;align-items:center;padding:18px 0}
+
+  button{
+    font:inherit;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+    background:transparent;border:1px solid var(--ink);color:var(--ink);
+    padding:7px 14px;cursor:pointer;border-radius:0
+  }
+  button:hover:not(:disabled){background:var(--ink);color:var(--paper)}
+  button:disabled{opacity:.32;cursor:default}
+
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+  /* ---------- detail ---------- */
+
+  .detail{padding-top:26px}
+
+  .back{margin-bottom:22px}
+
+  h2{
+    font-family:var(--display);font-weight:700;
+    font-size:clamp(22px,3.6vw,34px);line-height:1.1;letter-spacing:-.01em;
+    margin:0 0 6px;max-width:24ch
+  }
+  .subhead{color:var(--ink-soft);margin:0 0 22px}
+
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:26px
+  }
+  .cell{background:var(--paper);padding:11px 13px;min-height:56px}
+  .cell dt{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+  .cell dd{margin:0;font-size:13px;word-break:break-word}
+
+  section.block{margin-bottom:30px}
+  section.block > h3{
+    font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);
+    margin:0 0 10px;padding-bottom:7px;border-bottom:1px solid var(--ink);font-weight:500
+  }
+
+  .reason{
+    background:var(--band);border-left:3px solid var(--signal);
+    padding:13px 15px;font-size:13px;line-height:1.62
+  }
+  .reason.is-flagged{border-left-color:var(--flag);background:#F0E2E2}
+  .reason .warn{display:block;margin-top:10px;color:var(--flag);font-size:12px;line-height:1.5}
+
+  .desc{
+    font-size:13px;line-height:1.68;white-space:pre-wrap;max-height:340px;overflow:auto;
+    border:1px solid var(--rule);padding:14px 16px;background:#F4F5F1
+  }
+
+  /* signature: reserved-but-empty columns */
+  .withheld{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .slot{border:1px solid var(--rule);background:repeating-linear-gradient(
+      -45deg,transparent,transparent 7px,rgba(168,175,160,.16) 7px,rgba(168,175,160,.16) 8px);
+    min-height:88px;padding:11px 13px;display:flex;flex-direction:column;justify-content:space-between}
+  .slot dt{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft)}
+  .slot .empty{font-size:12px;color:var(--ink-soft);font-style:italic}
+  .grantline{
+    margin-top:12px;font-size:11.5px;line-height:1.55;color:var(--ink-soft);
+    border-top:1px solid var(--rule);padding-top:10px
+  }
+  .grantline code{color:var(--ink);font-size:11.5px}
+
+  /* ---------- events ---------- */
+
+  .events{list-style:none;margin:0;padding:0}
+  .ev{display:flex;gap:14px;align-items:baseline;padding:10px 0;border-bottom:1px solid rgba(168,175,160,.45)}
+  .ev .when{color:var(--ink-soft);font-size:12px;white-space:nowrap;min-width:150px}
+  .ev .move{font-weight:500}
+  .ev .arrow{color:var(--ink-soft);margin:0 5px}
+
+  /* ---------- states ---------- */
+
+  .state{padding:34px 0;color:var(--ink-soft)}
+  .state.err{color:var(--flag)}
+  .state b{display:block;color:var(--ink);font-size:15px;margin-bottom:5px;font-weight:600}
+
+  footer{
+    margin-top:44px;padding-top:18px;border-top:1px solid var(--rule);
+    color:var(--ink-soft);font-size:12px;line-height:1.65;max-width:70ch
+  }
+
+  .hidden{display:none}
+
+  @media (max-width:640px){
+    .withheld{grid-template-columns:1fr}
+    .hide-sm{display:none}
+    .ev{flex-direction:column;gap:2px}
+    .ev .when{min-width:0}
+  }
+
+  @media (prefers-reduced-motion:no-preference){
+    tbody tr{transition:background .12s ease,color .12s ease}
+    button{transition:background .12s ease,color .12s ease}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Job Search Orchestrator · public ledger</p>
+    <h1>A pipeline that publishes its own mistakes.</h1>
+    <p class="thesis">
+      Every posting below was collected, filtered, scored and tracked automatically. The
+      scoring model's written justification is published with each row — <strong>including the
+      rows where it was wrong.</strong> An audit of the scored set found two justifications
+      making eligibility claims the posting text does not support; both errors flatter the
+      candidate rather than the employer. They are marked, not removed.
+    </p>
+  </header>
+
+  <div class="counts" id="counts" aria-live="polite"></div>
+
+  <!-- ============ LIST ============ -->
+  <div id="listView">
+    <div class="toolbar">
+      <label for="q">Filter</label>
+      <input type="search" id="q" placeholder="title, company, location…" autocomplete="off">
+      <label for="st">Status</label>
+      <select id="st">
+        <option value="">all</option>
+        <option value="new">new</option>
+        <option value="drafted">drafted</option>
+        <option value="applied">applied</option>
+        <option value="archived">archived</option>
+        <option value="rejected">rejected</option>
+      </select>
+      <label for="sc">Scored only</label>
+      <input type="checkbox" id="sc" checked>
+    </div>
+
+    <div id="listState" class="state">Loading the ledger…</div>
+
+    <table id="tbl" class="hidden">
+      <thead>
+        <tr>
+          <th style="width:64px">Score</th>
+          <th>Title</th>
+          <th>Company</th>
+          <th class="hide-sm">Location</th>
+          <th class="hide-sm">Source</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <div class="pager" id="pager"></div>
+  </div>
+
+  <!-- ============ DETAIL ============ -->
+  <div id="detailView" class="detail hidden"></div>
+
+  <footer>
+    This page reads three public endpoints. Two columns of every posting —
+    <code>notes</code> and <code>cover_letter</code> — and the note on every state
+    change are withheld, not by this page but by a Postgres role that was never
+    granted permission to read them. A separate probe injects a leak into the schema
+    on each deploy and fails the build if the boundary stops holding.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var PAGE = 50;
+  var offset = 0;
+  var scoredOnly = true;
+  var rows = [];
+  var totalSeen = 0;
+
+  /* Mirrors the audit comment beside PUBLIC in seeds/build_demo.py.
+     Belongs server-side once the allowlist constants move out of seeds/. */
+  var FLAGGED = {412:true, 616:true};
+  var FLAG_TEXT = "Audit: this justification asserts eligibility the posting text does not support.";
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  function esc(v){
+    if (v === null || v === undefined) return "";
+    return String(v).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function dash(v){
+    return (v === null || v === undefined || v === "") ? '<span class="muted">—</span>' : esc(v);
+  }
+
+  function when(ts){
+    if (!ts) return "—";
+    var d = new Date(ts);
+    if (isNaN(d)) return esc(ts);
+    return d.toISOString().slice(0,16).replace("T"," ") + "Z";
+  }
+
+  function api(path){
+    return fetch(path, {headers:{"Accept":"application/json"}}).then(function(r){
+      if (r.status === 404) { var e = new Error("not found"); e.notFound = true; throw e; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function fail(el, title, detail){
+    el.className = "state err";
+    el.innerHTML = "<b>" + esc(title) + "</b>" + esc(detail);
+    el.classList.remove("hidden");
+  }
+
+  /* ---------------- list ---------------- */
+
+  function loadList(){
+    var st = $("listState");
+    st.className = "state";
+    st.textContent = "Loading the ledger…";
+    st.classList.remove("hidden");
+    $("tbl").classList.add("hidden");
+
+    api("/api/jobs?limit=" + PAGE + "&offset=" + offset + "&scored_only=" + scoredOnly).then(function(data){
+      rows = data;
+      totalSeen = offset + data.length;
+      st.classList.add("hidden");
+      $("tbl").classList.remove("hidden");
+      render();
+      counts();
+    }).catch(function(err){
+      fail(st, "The ledger did not load.",
+        "The API returned: " + err.message + ". Confirm the server is running and /api/jobs responds.");
+    });
+  }
+
+  function counts(){
+    var scored = rows.filter(function(r){ return r.relevance_score !== null && r.relevance_score !== undefined; });
+    var applied = rows.filter(function(r){ return r.status === "applied"; });
+    var box = $("counts");
+    box.innerHTML =
+      cnt(rows.length, "on this page") +
+      cnt(scored.length, "scored") +
+      cnt(applied.length, "applied") +
+      cnt(rows.filter(function(r){ return FLAGGED[r.id]; }).length, "flagged here");
+  }
+  function cnt(n, label){
+    return '<div class="count"><b>' + n + '</b><span>' + label + '</span></div>';
+  }
+
+  function render(){
+    var q = $("q").value.trim().toLowerCase();
+    var st = $("st").value;
+    var body = $("tbody");
+
+    var shown = rows.filter(function(r){
+      if (st && r.status !== st) return false;
+      if (!q) return true;
+      return [r.title, r.company, r.location, r.source].some(function(v){
+        return v && String(v).toLowerCase().indexOf(q) !== -1;
+      });
+    });
+
+    if (!shown.length){
+      body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:26px 10px">' +
+        'Nothing on this page matches. Clear the filter, or try the next page.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = shown.map(function(r){
+      var flag = FLAGGED[r.id]
+        ? ' <abbr class="flagmark" title="' + esc(FLAG_TEXT) + '">flagged</abbr>' : "";
+      return '<tr tabindex="0" data-id="' + esc(r.id) + '">' +
+        '<td class="sc">' + (r.relevance_score === null || r.relevance_score === undefined ? '<span class="muted">—</span>' : esc(r.relevance_score)) + '</td>' +
+        '<td class="ttl">' + dash(r.title) + flag + '</td>' +
+        '<td>' + dash(r.company) + '</td>' +
+        '<td class="muted hide-sm">' + dash(r.location) + '</td>' +
+        '<td class="muted hide-sm nowrap">' + dash(r.source) + '</td>' +
+        '<td class="nowrap">' + dash(r.status) + '</td>' +
+      '</tr>';
+    }).join("");
+
+    $("pager").innerHTML =
+      '<button id="prev"' + (offset === 0 ? " disabled" : "") + '>Previous</button>' +
+      '<button id="next"' + (rows.length < PAGE ? " disabled" : "") + '>Next</button>' +
+      '<span class="muted">rows ' + (offset + 1) + '–' + totalSeen + '</span>';
+
+    var p = $("prev"), n = $("next");
+    if (p) p.onclick = function(){ offset = Math.max(0, offset - PAGE); loadList(); window.scrollTo(0,0); };
+    if (n) n.onclick = function(){ offset += PAGE; loadList(); window.scrollTo(0,0); };
+  }
+
+  /* ---------------- detail ---------------- */
+
+  function openJob(id){
+    var v = $("detailView");
+    $("listView").classList.add("hidden");
+    v.classList.remove("hidden");
+    v.innerHTML = '<div class="state">Loading posting ' + esc(id) + '…</div>';
+    window.scrollTo(0,0);
+
+    Promise.all([ api("/api/jobs/" + id), api("/api/jobs/" + id + "/events") ])
+      .then(function(res){ drawDetail(res[0], res[1]); })
+      .catch(function(err){
+        if (err.notFound){
+          v.innerHTML = '<div class="state err"><b>No posting with id ' + esc(id) + '.</b>' +
+            'It may have been removed from the store. Go back to the ledger.</div>' +
+            '<div class="back"><button id="bk">Back to the ledger</button></div>';
+        } else {
+          v.innerHTML = '<div class="state err"><b>That posting did not load.</b>' +
+            esc(err.message) + '</div>' +
+            '<div class="back"><button id="bk">Back to the ledger</button></div>';
+        }
+        wireBack();
+      });
+  }
+
+  function field(label, value){
+    return '<div class="cell"><dt>' + esc(label) + '</dt><dd>' + dash(value) + '</dd></div>';
+  }
+
+  function drawDetail(j, events){
+    var flagged = !!FLAGGED[j.id];
+
+    var head =
+      '<div class="back"><button id="bk">← Back to the ledger</button></div>' +
+      '<h2>' + dash(j.title) + '</h2>' +
+      '<p class="subhead">' + dash(j.company) +
+        (j.location ? ' · ' + esc(j.location) : '') +
+        (j.url ? ' · <a href="' + esc(j.url) + '" target="_blank" rel="noopener noreferrer">original posting ↗</a>' : '') +
+      '</p>';
+
+    var grid = '<dl class="grid">' +
+      field("Score", j.relevance_score) +
+      field("Status", j.status) +
+      field("Source", j.source) +
+      field("Category", j.category) +
+      field("Job type", j.job_type) +
+      field("Salary", j.salary) +
+      field("Ladder match", j.ladder_match) +
+      field("Prefilter", j.prefilter_pass === 1 ? "passed" : (j.prefilter_pass === 0 ? "dropped" : null)) +
+      field("Published", j.publication_date) +
+      field("Collected", when(j.fetched_at)) +
+      field("Status changed", when(j.status_updated_at)) +
+      field("External id", j.external_id) +
+    '</dl>';
+
+    var reason = "";
+    if (j.score_reason){
+      reason = '<section class="block"><h3>Why the model scored it this way</h3>' +
+        '<div class="reason' + (flagged ? ' is-flagged' : '') + '">' + esc(j.score_reason) +
+        (flagged ? '<span class="warn">' + esc(FLAG_TEXT) +
+          ' It is published unchanged, as evidence of the failure mode.</span>' : '') +
+        '</div></section>';
+    }
+
+    var withheld = '<section class="block"><h3>Withheld from this page</h3>' +
+      '<div class="withheld">' +
+        '<div class="slot"><dt>notes</dt><span class="empty">never sent to the browser</span></div>' +
+        '<div class="slot"><dt>cover_letter</dt><span class="empty">never sent to the browser</span></div>' +
+      '</div>' +
+      '<p class="grantline">These columns are absent because the reading role holds no grant on them. ' +
+      'The query behind this page runs as <code>public_reader</code>, which was granted ' +
+      '<code>SELECT</code> on a named column list that does not include either one. ' +
+      'The same applies to the note attached to every state change below.</p>' +
+    '</section>';
+
+    var trail = '<section class="block"><h3>State changes</h3>' +
+      (events && events.length
+        ? '<ul class="events">' + events.map(function(e){
+            return '<li class="ev"><span class="when">' + when(e.at) + '</span>' +
+              '<span class="move">' + (e.from_status ? esc(e.from_status) : '<span class="muted">—</span>') +
+              '<span class="arrow">→</span>' + esc(e.to_status) + '</span></li>';
+          }).join("") + '</ul>'
+        : '<p class="muted">No recorded state changes. This posting has not moved since it was collected.</p>') +
+    '</section>';
+
+    var desc = j.description
+      ? '<section class="block"><h3>Posting text as stored</h3><div class="desc">' + esc(j.description) + '</div></section>'
+      : "";
+
+    $("detailView").innerHTML = head + grid + reason + withheld + trail + desc;
+    wireBack();
+  }
+
+  function wireBack(){
+    var b = $("bk");
+    if (b) b.onclick = function(){
+      $("detailView").classList.add("hidden");
+      $("detailView").innerHTML = "";
+      $("listView").classList.remove("hidden");
+      window.scrollTo(0,0);
+    };
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  $("tbody").addEventListener("click", function(e){
+    var tr = e.target.closest("tr[data-id]");
+    if (tr) openJob(tr.getAttribute("data-id"));
+  });
+
+  $("tbody").addEventListener("keydown", function(e){
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var tr = e.target.closest("tr[data-id]");
+    if (tr){ e.preventDefault(); openJob(tr.getAttribute("data-id")); }
+  });
+
+  $("q").addEventListener("input", render);
+  $("st").addEventListener("change", render);
+
+  $("sc").addEventListener("change", function(){
+    scoredOnly = $("sc").checked;
+    offset = 0;
+    loadList();
+  });
+
+  loadList();
+})();
+</script>
+</body>
+</html>
