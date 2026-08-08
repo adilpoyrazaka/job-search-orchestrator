@@ -1,5 +1,7 @@
 # Job-Search Orchestrator
 
+[![CI](https://github.com/workintechpoyrazaka-sketch/job-search-orchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/workintechpoyrazaka-sketch/job-search-orchestrator/actions)
+
 A personal pipeline that collects remote job postings, scores them with an
 LLM, drafts grounded cover letters, and records applications behind a
 human-confirmation gate — backed by PostgreSQL with a role-based
