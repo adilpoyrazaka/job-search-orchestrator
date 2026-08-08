@@ -54,18 +54,21 @@ async def operator_conn(
                 raise HTTPException(500, "operator role assertion failed")
             yield conn
 
-def sqlite_writer_conn(_: None = Depends(require_operator)):
-    """Request-scoped SQLite connection for the operator WRITE path (Option 1).
+def pg_writer_conn(_: None = Depends(require_operator)):
+    """Request-scoped sync psycopg connection to the live store, for the
+    operator WRITE path.
 
-    SQLite stays the system of record until cutover, so the apply write lands
-    here — NOT on the asyncpg pool. Auth-gated first (mirrors operator_conn):
-    an unauthenticated request 401s before any connection is opened. A
-    dependency, not an inline get_connection(), so a probe can override it onto
-    a scratch DB — an 'applied' event is real, semi-terminal data and must never
-    be fired at the live jobs.db by a test. Sync on purpose (the write path is
-    sqlite3; the apply route is a sync def, so FastAPI threadpools it and the
-    blocking sqlite calls never touch the event loop). Deleted at cutover.
+    Auth-gated first (mirrors operator_conn): an unauthenticated request 401s
+    before any connection is opened — auth for the apply route rides entirely
+    on this dependency. A dependency, not an inline get_connection(), so a
+    probe can override it onto a scratch database: an 'applied' event is real,
+    semi-terminal data and must never be fired at the live store by a test.
+    Sync on purpose: the route is a sync def, so FastAPI threadpools it and
+    the blocking psycopg calls never touch the event loop. This dependency
+    neither commits nor rolls back — the CALLER owns the commit, and close()
+    discards any uncommitted work (see apply.py's _main for the pattern).
     """
+
     conn = get_connection()
     try:
         yield conn

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.api.db import operator_conn, sqlite_writer_conn
+from src.api.db import operator_conn, pg_writer_conn
 from src.core.tracking import (
     TRANSITIONS,
     TransitionError,
@@ -40,7 +40,7 @@ class ApplyRequest(BaseModel):
 def apply_job_operator(
     job_id: int,
     body: ApplyRequest,
-    conn=Depends(sqlite_writer_conn),
+    conn=Depends(pg_writer_conn),
 ):
     """Record an application — the web analogue of the CLI bouncer.
 

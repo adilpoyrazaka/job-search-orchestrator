@@ -216,10 +216,12 @@ def verify_invariants(conn: psycopg.Connection) -> list[str]:
     """Check the invariant stated at the top of this module, for real.
 
     Returns a list of human-readable violations; empty list means the DB
-    honors the contract. Three clauses:
+    honors the contract. Four clauses:
       1. every non-'new' job has at least one event (no unevidenced state)
       2. every evented job's status equals its latest event's to_status
       3. every evented job's status_updated_at equals its latest event's at
+      4. every event references an existing job (no orphaned history;
+         redundant with the FK's ON DELETE RESTRICT, kept as belt-and-braces)
     Stated here since Module 4; enforced nowhere until 2026-07-18. Callers
     decide whether violations are fatal (build_demo: yes).
     """

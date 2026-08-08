@@ -3,7 +3,7 @@ failure.
 
 Exercises POST /api/operator/jobs/{id}/apply end to end against a THROWAWAY
 SQLite DB — never the live jobs.db. The database is swapped by monkeypatching
-get_connection; the sqlite_writer_conn DEPENDENCY is left untouched, so the
+get_connection; the pg_writer_conn DEPENDENCY is left untouched, so the
 auth this probe asserts is the REAL Depends(require_operator) that ships. That
 is deliberate: the write path is the dependency re-wired at cutover, and if a
 future Postgres writer dep forgets require_operator, the no-token / wrong-token
@@ -62,7 +62,7 @@ def _seed():
 
 def main():
     _seed()
-    # Swap the DB under the REAL dependency: sqlite_writer_conn still runs its
+    # Swap the DB under the REAL dependency: pg_writer_conn still runs its
     # Depends(require_operator); only the connection it opens points at scratch.
     dbmod.get_connection = lambda: _real_get_connection(SCRATCH)
 
