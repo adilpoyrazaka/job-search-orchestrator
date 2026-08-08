@@ -12,9 +12,20 @@ _EVENT_COLS = ", ".join(EVENT_PUBLIC)
 
 
 @router.get("/jobs")
-async def list_jobs(conn=Depends(public_conn), limit: int = 50, offset: int = 0):
+async def list_jobs(
+    conn=Depends(public_conn),
+    limit: int = 50,
+    offset: int = 0,
+    scored_only: bool = False,
+):
+    # Both fragments are literal constants selected by a bool -- no user input
+    # reaches the SQL text. `id DESC` is a load-bearing tie-break: many rows
+    # share a score, and without it LIMIT/OFFSET paging can repeat or skip rows.
+    where = "WHERE relevance_score IS NOT NULL " if scored_only else ""
+    order = ("ORDER BY relevance_score DESC, id DESC" if scored_only
+             else "ORDER BY id DESC")
     rows = await conn.fetch(
-        f"SELECT {_JOB_COLS} FROM jobs ORDER BY id DESC LIMIT $1 OFFSET $2",
+        f"SELECT {_JOB_COLS} FROM jobs {where}{order} LIMIT $1 OFFSET $2",
         limit, offset,
     )
     return [dict(r) for r in rows]
