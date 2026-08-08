@@ -22,3 +22,4 @@ profile.md*
 .venv-dashboard/
 .agents/skills/developing-with-streamlit/
 .agents/
+*.bak
