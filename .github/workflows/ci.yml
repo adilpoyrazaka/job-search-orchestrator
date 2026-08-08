@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main, web]
+  pull_request:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint (syntax errors and undefined names)
+        run: ruff check --select E9,F63,F7,F82 .
+
+      - name: Byte-compile everything
+        run: python -m compileall -q src probes seeds db
+
+      - name: Import smoke test (API boots at import time)
+        env:
+          OPERATOR_TOKEN: ci-dummy-token
+          DATABASE_URL: postgresql://ci@localhost/ci
+        run: python -c "import src.api.main; print('import ok')"
