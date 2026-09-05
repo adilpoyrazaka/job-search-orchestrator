@@ -44,7 +44,9 @@ def apply_job_operator(
 ):
     """Record an application — the web analogue of the CLI bouncer.
 
-    Writes SQLite (the system of record until cutover), NOT the asyncpg pool.
+    Writes through a sync psycopg connection (pg_writer_conn), NOT the asyncpg
+    pool: the route is a sync def, so FastAPI threadpools it and the blocking
+    calls never touch the event loop.
     Surfaces the same gate confirm_and_apply does — eligibility facts plus a
     red-flag scan — but as a request contract instead of a terminal prompt: the
     transition stays a deliberate, per-job human act. The write routes through
@@ -55,7 +57,7 @@ def apply_job_operator(
     """
     row = conn.execute(
         "SELECT status, title, company, location, url, description "
-        "FROM jobs WHERE id = ?",
+        "FROM jobs WHERE id = %s",
         (job_id,),
     ).fetchone()
     if row is None:
@@ -106,5 +108,11 @@ def apply_job_operator(
     except TransitionError as e:
         # Lost race (status moved between read and write) or engine refusal.
         raise HTTPException(409, str(e))
+
+    # Caller owns the commit (pg_writer_conn neither commits nor rolls back).
+    # The gate SELECT above already opened the transaction, so
+    # _apply_transition's block is a SAVEPOINT and releasing it does NOT
+    # commit. Without this the route reports success and persists nothing.
+    conn.commit()
 
     return {"id": job_id, "status": "applied", "note": body.note}
