@@ -8,10 +8,12 @@ human-confirmation gate — backed by PostgreSQL with a role-based
 public/private boundary and served through a FastAPI read layer. One user,
 real data, real audit trail.
 
-**Live dashboard:** https://jobsearchorchestrator.streamlit.app — a
-read-only snapshot mirror built fail-closed from the real database. The
-repo also contains the current dashboard (`static/index.html`, served
-same-origin by the API), pending deployment.
+![Public dashboard: the withheld fields render as empty slots](docs/dashboard.png)
+
+**Dashboard:** `static/index.html`, a single static page served same-origin
+by the API — no build step; run it locally with `uvicorn src.api.main:app`
+(see *Running it*). An earlier read-only Streamlit mirror of a SQLite
+snapshot is at https://jobsearchorchestrator.streamlit.app.
 
 The interesting part is not that an LLM scores jobs. It is what this repo
 does about the fact that neither LLM outputs nor the operator's own memory
@@ -99,6 +101,18 @@ loudly before being trusted:
    behaviour, verified from a separate connection after exit so a missing
    commit cannot hide.
 
+Run them against a configured environment (the third needs a throwaway
+database, `SCRATCH_DATABASE_URL` — see `.env.example`; it never touches
+the live store):
+
+    python -m src.core.invariants_pg
+    python -m probes.grant_parity
+    python -m probes.apply_gate
+
+"Demonstrated to fail" means exactly that: remove the apply route's
+`conn.commit()` and `apply_gate` reports zero persisted rows; drop
+`require_operator` from the writer dependency and its 401 checks turn red.
+
 ## Known open questions
 
 This project publishes its mistakes, so: the top-scored job in the store
@@ -119,12 +133,19 @@ Scores here are treated as samples, not truths.
 
 ## Running it
 
+Needs Python 3.12 and a local PostgreSQL where your OS user can create a
+database (peer auth).
+
     python -m venv .venv && source .venv/bin/activate
     pip install -r requirements.txt
-    cp .env.example .env        # then fill in real values
-    python db/apply_schema.py   # as a migration-capable role
+    cp .env.example .env                 # fill in real values
+    cp profile.example.md profile.md     # grounding doc for drafting (gitignored)
+    createdb orchestrator
+    SCHEMA_DSN=postgresql:///orchestrator python -m db.apply_schema   # as the owning role
+    psql orchestrator -f db/roles.sql    # public_reader + orchestrator_app
+    psql orchestrator -c "ALTER ROLE orchestrator_app PASSWORD '...'"   # then add it to ~/.pgpass
     set -a; . ./.env; set +a
-    uvicorn src.api.main:app
+    uvicorn src.api.main:app             # http://127.0.0.1:8000
 
 The pipeline itself: `python -m src.run` (collect through draft; apply is
 CLI-only and always manual).
