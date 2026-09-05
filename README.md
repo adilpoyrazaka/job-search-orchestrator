@@ -113,6 +113,17 @@ the live store):
 `conn.commit()` and `apply_gate` reports zero persisted rows; drop
 `require_operator` from the writer dependency and its 401 checks turn red.
 
+## Tests
+
+`tests/` holds unit tests that need no database: the state-machine graph,
+the red-flag scanner, prefilter rules, score parsing, HTML cleaning, bearer
+auth, and a static check that `db/roles.sql` grants exactly the public
+allowlist. They run in CI on every push; the three deploy gates above need
+a Postgres and run by hand.
+
+    pip install -r requirements-dev.txt
+    pytest -q
+
 ## Known open questions
 
 This project publishes its mistakes, so: the top-scored job in the store
@@ -128,6 +139,7 @@ Scores here are treated as samples, not truths.
     db/             schema, roles, callable schema applier
     seeds/          migrator (SQLite → Postgres) and committed repairs
     probes/         deploy gates + published investigations
+    tests/          unit tests, no database required
     static/         read-only dashboard, no build step
     dashboard/      Streamlit snapshot mirror
 
