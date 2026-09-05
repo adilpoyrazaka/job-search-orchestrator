@@ -162,8 +162,8 @@ def _run_gates(build_path: Path) -> None:
                 + "\n  ".join(problems)
             )
 
-    print(f"  gates OK   : withheld columns empty; applied evidenced; "
-          f"invariants hold")
+    print("  gates OK   : withheld columns empty; applied evidenced; "
+          "invariants hold")
     print(f"  total jobs : {total}")
     print(f"  job_events : {events}")
     print(f"  by status  : {by_status}")

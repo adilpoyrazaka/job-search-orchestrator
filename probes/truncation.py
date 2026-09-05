@@ -48,9 +48,9 @@ from dotenv import load_dotenv
 
 load_dotenv(".env")  # explicit: documented to run from the repo root
 
-from anthropic import Anthropic
+from anthropic import Anthropic  # noqa: E402  (after load_dotenv, on purpose)
 
-from src.core import scoring
+from src.core import scoring  # noqa: E402
 
 # The cap this probe demonstrates the failure of. Historical value, not the
 # current one -- src.core.scoring.MAX_DESC_CHARS is now 60000 (a bound, not a
@@ -181,7 +181,7 @@ def main() -> None:
     print(f"desc_len   : {len(FIXTURE_DESCRIPTION)}")
     print(f"gate at    : {gate_at}  (past the {FILTERING_CAP}-char cap by "
           f"{gate_at - FILTERING_CAP})")
-    print(f"--- marker offsets (-1 = absent from the description entirely)")
+    print("--- marker offsets (-1 = absent from the description entirely)")
     for m in MARKERS:
         at = FIXTURE_DESCRIPTION.lower().find(m)
         if at == -1:
