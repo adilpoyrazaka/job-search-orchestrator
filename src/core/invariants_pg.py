@@ -1,27 +1,20 @@
 """Standalone deploy gate: the event-trail invariants, as a process that
-exits 1 on violation. tracking.verify_invariants is the same check as an
-in-process function; the two must agree.
+exits 1 on violation. The check itself is tracking.verify_invariants; this
+module only owns the DSN policy and the exit code.
 
-CONTRACT (shared with tracking.verify_invariants):
-  - returns list[str] of human-readable violations; empty list == honored
-  - NEVER raises on violation; callers decide fatality
-  - violation messages use the same format so outputs diff cleanly
-
-Clauses:
+Clauses (see tracking.verify_invariants):
   1. every non-'new' job has at least one event (no unevidenced state)
   2. every evented job's status equals its latest event's to_status
   3. every evented job's status_updated_at equals its latest event's at
   4. no event references a missing job (structurally impossible under the
-     FK in db/schema.sql; kept for contract parity and as insurance
-     against a deferred/dropped constraint)
+     FK in db/schema.sql; kept as insurance against a dropped constraint)
 
-Latest event: ORDER BY at DESC, id DESC — the id tie-break is load-bearing
-(events 3 and 4 share an identical timestamp).
+Latest event: ORDER BY at DESC, id DESC -- the id tie-break is load-bearing
+(two early events share an identical timestamp).
 
-KNOWN BLIND SPOT, kept deliberately: clause 3 uses != and therefore
-skips evented jobs whose status_updated_at is NULL (NULL != x is not
-true). tracking.verify_invariants behaves identically; fixing one
-implementation alone would make the two disagree, which is worse.
+Clause 3 compares with IS DISTINCT FROM, so an evented job whose
+status_updated_at is NULL is a violation, not a silent pass (a plain !=
+would skip it: NULL != x is not true).
 
 Standalone: python -m src.core.invariants_pg   (exit 1 on violations)
 DSN: DATABASE_URL, with PG_DSN as an explicit override for pointing the
@@ -32,62 +25,18 @@ that can silently verify the wrong database is worse than no gate.
 import os
 import sys
 
-import psycopg
+from src.core.storage import get_connection
+from src.core.tracking import verify_invariants
 
 PG_DSN = os.environ.get("PG_DSN") or os.environ["DATABASE_URL"]
 
-_LATEST = """(SELECT e.{col} FROM job_events e WHERE e.job_id = j.id
-              ORDER BY e.at DESC, e.id DESC LIMIT 1)"""
-
-
-def verify_invariants(conn: psycopg.Connection) -> list[str]:
-    problems: list[str] = []
-    with conn.cursor() as cur:
-        cur.execute("""
-            SELECT j.id FROM jobs j
-            WHERE j.status != 'new'
-              AND NOT EXISTS (SELECT 1 FROM job_events e WHERE e.job_id = j.id)
-            ORDER BY j.id
-        """)
-        rows = cur.fetchall()
-        if rows:
-            problems.append(f"non-'new' jobs with no event: {[r[0] for r in rows]}")
-
-        cur.execute(f"""
-            SELECT j.id, j.status, {_LATEST.format(col='to_status')} AS latest
-            FROM jobs j
-            WHERE EXISTS (SELECT 1 FROM job_events e WHERE e.job_id = j.id)
-              AND j.status != {_LATEST.format(col='to_status')}
-            ORDER BY j.id
-        """)
-        rows = cur.fetchall()
-        if rows:
-            problems.append(f"status != latest event.to_status: {[tuple(r) for r in rows]}")
-
-        cur.execute(f"""
-            SELECT j.id FROM jobs j
-            WHERE EXISTS (SELECT 1 FROM job_events e WHERE e.job_id = j.id)
-              AND j.status_updated_at != {_LATEST.format(col='at')}
-            ORDER BY j.id
-        """)
-        rows = cur.fetchall()
-        if rows:
-            problems.append(f"status_updated_at != latest event.at: {[r[0] for r in rows]}")
-
-        cur.execute("""
-            SELECT e.id FROM job_events e
-            WHERE NOT EXISTS (SELECT 1 FROM jobs j WHERE j.id = e.job_id)
-            ORDER BY e.id
-        """)
-        rows = cur.fetchall()
-        if rows:
-            problems.append(f"events referencing missing jobs: {[r[0] for r in rows]}")
-    return problems
-
 
 def main() -> int:
-    with psycopg.connect(PG_DSN) as conn:
+    conn = get_connection(PG_DSN)
+    try:
         problems = verify_invariants(conn)
+    finally:
+        conn.close()
     if problems:
         for p in problems:
             print(f"INVARIANT VIOLATION: {p}", file=sys.stderr)

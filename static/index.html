@@ -287,8 +287,8 @@
   var rows = [];
   var totalSeen = 0;
 
-  /* Mirrors the audit comment beside PUBLIC in seeds/build_demo.py.
-     Belongs server-side once the allowlist constants move out of seeds/. */
+  /* Mirrors FLAGGED_REASONS in src/api/columns.py, beside the decision
+     that made score_reason public. */
   var FLAGGED = {412:true, 616:true};
   var FLAG_TEXT = "Audit: this justification asserts eligibility the posting text does not support.";
 

@@ -222,6 +222,8 @@ def verify_invariants(conn: psycopg.Connection) -> list[str]:
       1. every non-'new' job has at least one event (no unevidenced state)
       2. every evented job's status equals its latest event's to_status
       3. every evented job's status_updated_at equals its latest event's at
+         (IS DISTINCT FROM, so a NULL timestamp on an evented job is a
+         violation rather than a silent pass)
       4. every event references an existing job (no orphaned history;
          redundant with the FK's ON DELETE RESTRICT, kept as belt-and-braces)
     Callers decide whether violations are fatal (build_demo: yes).
@@ -255,7 +257,7 @@ def verify_invariants(conn: psycopg.Connection) -> list[str]:
     rows = conn.execute("""
         SELECT j.id FROM jobs j
         WHERE EXISTS (SELECT 1 FROM job_events e WHERE e.job_id = j.id)
-          AND j.status_updated_at != (SELECT e.at FROM job_events e
+          AND j.status_updated_at IS DISTINCT FROM (SELECT e.at FROM job_events e
                                       WHERE e.job_id = j.id
                                       ORDER BY e.at DESC, e.id DESC LIMIT 1)
     """).fetchall()

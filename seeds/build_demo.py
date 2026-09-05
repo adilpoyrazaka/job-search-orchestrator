@@ -34,7 +34,7 @@ TWO LATER HARDENINGS:
      withheld by denylist — leak-by-default wearing a feature's clothes
      (demonstrated live: score_reason reached the public DB while the
      working policy said withheld). Now every column of `jobs` must be
-     classified PUBLIC or WITHHELD below; an unclassified column kills
+     classified PUBLIC or WITHHELD in src/api/columns.py; an unclassified column kills
      the build by name. Adding a column to production now forces a
      publication decision instead of defaulting to one.
   2. ATOMIC PUBLISH. Gates used to run after demo.db was fully written;
@@ -63,41 +63,12 @@ SOURCE_PATH = ROOT / "data" / "jobs.db"
 DEMO_PATH = ROOT / "data" / "demo.db"
 BUILD_PATH = ROOT / "data" / "demo.db.building"   # gates pass -> renamed onto DEMO_PATH
 
-# --- column classification: every jobs column, explicitly ---------------------
-# PUBLIC is an allowlist; WITHHELD is documentation of the refusals; anything
-# in NEITHER set fails the build by name. There is no default.
-#
-# 'id' is public deliberately: job_events.job_id points at job ids. If the
-# demo re-numbered rows, an event would silently attach to whatever landed
-# at its job_id — a false claim, rendered confidently.
-PUBLIC = {
-    "id", "source", "external_id", "url", "title", "company", "category",
-    "job_type", "location", "salary", "description", "publication_date",
-    "fetched_at", "content_hash", "prefilter_pass", "ladder_match",
-    "relevance_score", "status", "status_updated_at",
-    # score_reason: PUBLIC as of 2026-07-18, decided after reading all 34
-    # and verifying checkable claims against stored posting text
-    # (probes/reason_audit.py): 32/34 grounded; rows 412 and 616 carry
-    # unsupported eligibility claims, published deliberately as evidence
-    # of the failure mode the truncation probe named (post-hoc narrative,
-    # not mechanism). Both errors favor the candidate, not the company.
-    "score_reason",
-}
-WITHHELD = {
-    # profile.md restated in prose; the one file that never enters the repo.
-    "cover_letter",
-    # hand-written private commentary (e.g. the Uken eligibility note);
-    # the dashboard never rendered it, so withholding costs the site nothing.
-    "notes",
-}
-
-# job_events: the transitions ARE the public evidence; the notes are running
-# commentary, including on in-progress hiring processes (withheld 2026-07-18
-# while an application is live -- content is professional, but disclosing the
-# state of an open negotiation is a choice, and this makes it deliberate).
-# Reclassify and rebuild to publish later.
-EVENT_PUBLIC = {"id", "job_id", "from_status", "to_status", "at"}
-EVENT_WITHHELD = {"note"}
+# --- column classification -------------------------------------------------
+# The allowlists live in src/api/columns.py (single authority, shared with
+# the public API and the grant-parity gate). This script only enforces that
+# every live column is classified there: anything in NEITHER list fails the
+# build by name. There is no default.
+from src.api.columns import EVENT_PUBLIC, EVENT_WITHHELD, PUBLIC, WITHHELD  # noqa: E402
 
 
 def _clone_schema(src: sqlite3.Connection, dst: sqlite3.Connection) -> None:
@@ -129,16 +100,16 @@ def _copy_table(src: sqlite3.Connection, dst: sqlite3.Connection,
 
 
 def _classify(table: str, all_cols: list[str],
-              public: set[str], withheld: set[str]) -> list[str]:
+              public: tuple[str, ...], withheld: tuple[str, ...]) -> list[str]:
     """Return the public column list, or die naming every unclassified column."""
     unclassified = [c for c in all_cols if c not in public and c not in withheld]
     if unclassified:
         raise SystemExit(
             f"REFUSING: unclassified column(s) in {table}: {unclassified}. "
-            "Every column must be classified in seeds/build_demo.py. "
+            "Every column must be classified in src/api/columns.py. "
             "No default. Classify, then rebuild."
         )
-    ghosts = (public | withheld) - set(all_cols)
+    ghosts = (set(public) | set(withheld)) - set(all_cols)
     if ghosts:
         raise SystemExit(
             f"REFUSING: column(s) classified for {table} not in the live "

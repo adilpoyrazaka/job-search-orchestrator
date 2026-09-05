@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from seeds.build_demo import PUBLIC, EVENT_PUBLIC   # single authority — no re-typed column list
+from src.api.columns import EVENT_PUBLIC, PUBLIC   # single authority — no re-typed column list
 from src.api.db import public_conn
 
 router = APIRouter(prefix="/api", tags=["public"])

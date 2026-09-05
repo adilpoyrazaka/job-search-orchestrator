@@ -6,9 +6,17 @@ db/roles.sql, so it runs on a clean clone with no Postgres.
 import re
 from pathlib import Path
 
-from seeds.build_demo import EVENT_PUBLIC, EVENT_WITHHELD, PUBLIC, WITHHELD
+from src.api.columns import EVENT_PUBLIC, EVENT_WITHHELD, PUBLIC, WITHHELD
 
 ROLES_SQL = (Path(__file__).resolve().parents[1] / "db" / "roles.sql").read_text()
+SCHEMA_SQL = (Path(__file__).resolve().parents[1] / "db" / "schema.sql").read_text()
+
+
+def _schema_columns(table: str) -> set[str]:
+    body = re.search(r"CREATE TABLE IF NOT EXISTS " + table + r" \((.*?)\n\);", SCHEMA_SQL, re.S)
+    assert body, f"no CREATE TABLE for {table} in schema.sql"
+    # column lines are indented four spaces and start with a lowercase identifier
+    return set(re.findall(r"^    ([a-z_]+)\s+(?:integer|text|timestamptz)", body.group(1), re.M))
 
 
 def _granted(table: str) -> set[str]:
@@ -20,10 +28,18 @@ def _granted(table: str) -> set[str]:
 
 
 def test_withheld_columns_never_appear_in_the_public_allowlist():
-    assert PUBLIC.isdisjoint(WITHHELD)
-    assert EVENT_PUBLIC.isdisjoint(EVENT_WITHHELD)
-    assert {"notes", "cover_letter"} <= WITHHELD
+    assert set(PUBLIC).isdisjoint(WITHHELD)
+    assert set(EVENT_PUBLIC).isdisjoint(EVENT_WITHHELD)
+    assert {"notes", "cover_letter"} <= set(WITHHELD)
     assert "note" in EVENT_WITHHELD
+
+
+def test_every_schema_column_is_classified():
+    # the static twin of build_demo's refuse-on-unclassified gate: a column
+    # added to db/schema.sql without a publication decision fails here
+    assert _schema_columns("jobs") == set(PUBLIC) | set(WITHHELD)
+    assert _schema_columns("job_events") == set(EVENT_PUBLIC) | set(EVENT_WITHHELD)
+    assert len(PUBLIC) == len(set(PUBLIC))          # no duplicates
 
 
 def test_roles_sql_grants_exactly_the_public_allowlist():

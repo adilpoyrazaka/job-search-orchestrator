@@ -1,7 +1,7 @@
 """Deploy gate: assert public_reader's actual column grants mirror
-build_demo.py PUBLIC / EVENT_PUBLIC exactly. Exit 1 on any asymmetry.
+src/api/columns.py PUBLIC / EVENT_PUBLIC exactly. Exit 1 on any asymmetry.
 
-Single authority: the allowlists live in build_demo.py. This probe proves
+Single authority: the allowlists live in src/api/columns.py. This probe proves
 the database agrees with them; it does not define them. Assumes public_reader
 holds only column-scoped SELECTs (never table-level SELECT), which is how
 roles.sql grants it.
@@ -10,7 +10,7 @@ import os
 import sys
 import asyncio
 import asyncpg
-from seeds.build_demo import PUBLIC, EVENT_PUBLIC
+from src.api.columns import EVENT_PUBLIC, PUBLIC
 
 ROLE = "public_reader"
 DATABASE_URL = os.environ["DATABASE_URL"]
