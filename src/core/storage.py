@@ -1,4 +1,4 @@
-"""SQLite storage layer: the orchestrator's system of record."""
+"""Postgres storage layer: connection factory, schema check, insert."""
 
 import os
 
@@ -52,14 +52,9 @@ def insert_new_jobs(conn: psycopg.Connection, jobs: list[dict]) -> dict:
 
     NOT an upsert. On conflict the existing row is left UNTOUCHED, so
     changed adapter values never reach rows already in the DB. Consequence:
-    the `Worldwide` tokens the Himalayas adapter fabricated from empty
-    locationRestrictions (fixed 2026-07; silence-for-silence) are frozen
-    in rows collected before the fix, and re-collection cannot rewrite
-    them -- that requires an explicit migration. A count is deliberately
-    not stated here: an earlier version said "278", which a later purge
-    made stale, and surviving fabricated tokens are now indistinguishable
-    from legitimate worldwide-filtered results. Docstrings should not
-    carry numbers the DB can contradict.
+    values an adapter produced before a fix (e.g. the `Worldwide` token the
+    Himalayas adapter once derived from an empty location list) stay frozen
+    in rows collected earlier; only an explicit migration can rewrite them.
     Does NOT commit: the caller owns the connection lifecycle and the
     transaction boundary, so this stays composable inside a larger
     transaction (psycopg forbids commit() inside conn.transaction()).

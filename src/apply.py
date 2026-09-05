@@ -32,8 +32,8 @@ _BOLD = "\033[1m"
 _RESET = "\033[0m"
 
 # Fields shown at the gate: the ones that make eligibility answerable at a
-# glance. (Structured geographic_restrictions / sponsorship extraction is
-# queued as Path 2; until then the red-flag scan reads the raw description.)
+# glance. (Structured extraction of location / sponsorship requirements is
+# planned; until then the red-flag scan reads the raw description.)
 _APPLY_FIELDS = ("title", "company", "location", "url")
 
 

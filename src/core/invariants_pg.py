@@ -1,9 +1,11 @@
-"""Postgres port of tracking.verify_invariants. Same contract, same clauses.
+"""Standalone deploy gate: the event-trail invariants, as a process that
+exits 1 on violation. tracking.verify_invariants is the same check as an
+in-process function; the two must agree.
 
-CONTRACT (shared with the SQLite sibling — both hold or neither counts):
+CONTRACT (shared with tracking.verify_invariants):
   - returns list[str] of human-readable violations; empty list == honored
   - NEVER raises on violation; callers decide fatality
-  - violation messages mirror the sibling's format so outputs diff cleanly
+  - violation messages use the same format so outputs diff cleanly
 
 Clauses:
   1. every non-'new' job has at least one event (no unevidenced state)
@@ -16,10 +18,10 @@ Clauses:
 Latest event: ORDER BY at DESC, id DESC — the id tie-break is load-bearing
 (events 3 and 4 share an identical timestamp).
 
-KNOWN BLIND SPOT, ported deliberately: clause 3 uses != and therefore
+KNOWN BLIND SPOT, kept deliberately: clause 3 uses != and therefore
 skips evented jobs whose status_updated_at is NULL (NULL != x is not
-true). The SQLite sibling behaves identically; fixing one implementation
-alone would make the siblings disagree, which is worse.
+true). tracking.verify_invariants behaves identically; fixing one
+implementation alone would make the two disagree, which is worse.
 
 Standalone: python -m src.core.invariants_pg   (exit 1 on violations)
 DSN: DATABASE_URL, with PG_DSN as an explicit override for pointing the

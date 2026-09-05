@@ -1,10 +1,10 @@
 """
 Build the public dashboard database from the REAL job search database.
 
-WHAT CHANGED (2026-07-17) AND WHY:
+WHY IT MIRRORS REAL DATA:
 This script used to synthesize fictional companies and leave job_events
 empty, on the stated rule: "the deployed dashboard must never see
-data/jobs.db." That rule is REPEALED, deliberately, by Poi on 2026-07-17.
+data/jobs.db." That rule was deliberately reversed.
 
 Reason for repeal: the fictional site could not be shown to anyone. A demo
 of invented companies demonstrates the pipeline's shape and nothing about
@@ -29,8 +29,8 @@ DB does; CREATE TABLE IF NOT EXISTS hid the drift. The mirror is built
 from what production reports, not from a transcript of what production
 was once declared to be.
 
-AMENDED 2026-07-18 (cold-review findings):
-  1. FAIL-CLOSED COLUMNS. The 07-17 design auto-copied any new column and
+TWO LATER HARDENINGS:
+  1. FAIL-CLOSED COLUMNS. The first design auto-copied any new column and
      withheld by denylist — leak-by-default wearing a feature's clothes
      (demonstrated live: score_reason reached the public DB while the
      working policy said withheld). Now every column of `jobs` must be

@@ -1,9 +1,8 @@
 """LLM relevance scoring: Haiku rates prefiltered jobs 0-100.
 
-Second half of Module 2. Only postings the deterministic prefilter passed
-reach the model, so tokens are spent on plausible matches. Every score
-carries a reason (layer 1 of the trust model): the model justifies itself,
-never a bare number.
+Only postings the deterministic prefilter passed reach the model, so
+tokens are spent on plausible matches. Every score carries a reason: the
+model justifies itself, never a bare number.
 """
 
 import json
@@ -16,9 +15,8 @@ from src.core.storage import get_connection
 MODEL = "claude-haiku-4-5-20251001"
 # Cheap tier for high-volume triage. Cap description length to bound tokens.
 # Bound, not filter: guards against a pathological payload, never decides
-# which text the model may judge. Corpus: 283 rows, longest 53,423 chars.
-# Was 2000, which sent 40% of the mean row and hid seniority gates past the
-# cut (row 406: '3+ year' at 2386 -> 85 truncated vs 72 at full text).
+# which text the model may judge. A 2,000-char cap once hid a '3+ years'
+# gate past the cut and moved the score (see probes/truncation.py).
 MAX_DESC_CHARS = 60000
 
 SYSTEM_PROMPT = (
@@ -69,13 +67,11 @@ def _parse_score(text):
 def _extract_text(resp):
     """Return the model's text output, tolerant of thinking blocks.
 
-    Same doctrine as drafting._extract_text (Module 3): select the block
-    by TYPE, never by position. Haiku 4.5 happens to put text at
-    content[0] today, which is why the positional read never failed --
-    but "works because the current model is shaped that way" is exactly
-    the kind of accident that breaks silently on a repin. Ported
-    2026-07-18 after cold review caught the lesson applied in one module
-    and not its sibling.
+    Same rule as drafting._extract_text: select the block by TYPE, never
+    by position. Haiku 4.5 happens to put text at content[0] today, which
+    is why a positional read never failed -- but "works because the current
+    model is shaped that way" is exactly the kind of accident that breaks
+    silently on a repin.
     """
     for block in resp.content:
         if getattr(block, "type", None) == "text":

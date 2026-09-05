@@ -1,6 +1,6 @@
 """Match analysis: Sonnet maps a posting's requirements to the real profile.
 
-Chain link 1 of 2 in Module 3 (prompt chaining). This step produces a
+Chain link 1 of 2 (prompt chaining). This step produces a
 structured, inspectable mapping -- what the candidate genuinely matches vs.
 where the gaps are and how to bridge them honestly. Link 2 (cover letter)
 consumes this object, so the letter is grounded in a reviewed analysis rather
@@ -20,7 +20,7 @@ from anthropic import Anthropic
 
 from src.core.storage import get_connection
 
-# Pinned model ID so drafting logic stays reproducible. Sonnet (not Haiku):
+# Model for drafting. Sonnet (not Haiku):
 # match quality drives letter quality, and honest gap-bridging without
 # fabrication is exactly where the stronger model earns its cost.
 MODEL = "claude-sonnet-5"

@@ -10,8 +10,8 @@ fired at the live store by a test.
 The database is swapped by monkeypatching storage.get_connection as seen from
 src.api.db; the pg_writer_conn DEPENDENCY is left untouched, so the auth this
 probe asserts is the REAL Depends(require_operator) that ships. That is
-deliberate: the write path is the dependency re-wired at cutover, and if a
-future writer dep forgets require_operator, the no-token / wrong-token checks
+deliberate: the write path is the dependency most likely to be re-wired, and
+if a future writer dep forgets require_operator, the no-token / wrong-token checks
 below turn red. A gate that has only ever passed is untested; this one asserts
 the route both REJECTS (401/400/404/409) and APPLIES (200), and that the
 resulting trail honors verify_invariants — read back from a SEPARATE
@@ -109,7 +109,7 @@ def main():
             if not ok:
                 violations.append(f"{label}: body predicate failed ({r.json()})")
 
-    # --- auth: the checks that turn red if a cutover drops require_operator ---
+    # --- auth: the checks that turn red if a rewire drops require_operator ---
     # No confirm: a dropped-auth request must not WRITE while we're proving the
     # gate — it stops at the confirm gate (409), keeping job1 pristine.
     check("no token", cl.post(U.format(1), json={"note": "n"}), 401)

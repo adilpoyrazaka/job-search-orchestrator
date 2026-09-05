@@ -3,7 +3,7 @@
 House style: seeds/repair_20260718.py — precondition-gated, dry-run-first,
 single transaction, post-conditions verified before commit.
 
-TIMESTAMP DOCTRINE (settles STATE_DOC §5 open item):
+TIMESTAMP DOCTRINE:
   Two formats exist in the source, verified by direct read on 2026-07-18:
     - UTC-aware '+00:00' strings (all fetched_at; tracking.py-era events)
       -> parsed and passed through.
@@ -13,7 +13,7 @@ TIMESTAMP DOCTRINE (settles STATE_DOC §5 open item):
   UTC- and Istanbul-interpretation, every event lands after its job's
   UTC-aware fetched_at, so the data cannot distinguish them. Istanbul is
   chosen because the sole operator's machine ran datetime.now() in that
-  zone. Check query preserved in repo history (session 2026-07-18).
+  zone. The check query is preserved in repo history.
 
 IDs migrate as-is: events, the reason audit, and project docs reference
 jobs by number (#412, #616, #962). Sequences are setval'd to max(id).

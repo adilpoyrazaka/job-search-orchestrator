@@ -20,6 +20,8 @@ RESULT (2026-07-18, frozen as fixtures below)
 
 RUN
     python -m probes.reason_audit              # audits data/demo.db (public)
+    Runs against the committed SQLite snapshot, not the live Postgres store:
+    the audited reasons are frozen there, so the result stays reproducible.
 """
 
 import re

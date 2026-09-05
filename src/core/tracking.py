@@ -1,6 +1,6 @@
 """State-machine tracking: the only sanctioned way a job changes status.
 
-Design (Module 4):
+Design:
   - jobs.status stays the working state; job_events is the append-only audit
     trail. Every status change writes BOTH, atomically, in one transaction.
     A job's current status must never drift from its latest event.
@@ -52,12 +52,14 @@ def status_domain_sql() -> str:
     return f"CHECK (status IN ({values}))"
 
 # Phrases that hint a job may be eligibility-gated in a way the pipeline cannot
-# see from structured fields (the Uken blind spot). This list is an ASSISTANT,
+# see from structured fields (a restriction that may live only on the
+# application form, not in the posting). This list is an ASSISTANT,
 # NOT AN ORACLE: a hit directs the eye to a likely disqualifier, but an EMPTY
 # result is NOT a clearance -- it only means no *known* phrase matched. New
 # postings will phrase restrictions in ways not listed here. The apply gate
 # must force a human look regardless of whether this returns anything.
-# Queued (improvement backlog): replace with structured extraction (Path 2).
+# Planned: replace with structured extraction of location / sponsorship
+# requirements.
 RED_FLAG_PATTERNS: list[str] = [
     r"u\.?s\.?\s+only",
     r"us[- ]based only",
@@ -193,8 +195,8 @@ def apply_to_job(
     """The one door to 'applied'. Pure engine -- no I/O, deterministic.
 
     `authorized` is the human's assertion that work-authorization / location
-    eligibility has been verified for THIS job (the Uken blind spot: a fact
-    that lives on the application form, not in the stored posting). This
+    eligibility has been verified for THIS job (a fact that may live only on
+    the application form, not in the stored posting). This
     function does not compute that fact -- it refuses to write unless the fact
     is asserted True. The forcing function that MAKES the human look lives one
     layer out (confirm_and_apply, the CLI bouncer), which is the only sanctioned
@@ -222,8 +224,7 @@ def verify_invariants(conn: psycopg.Connection) -> list[str]:
       3. every evented job's status_updated_at equals its latest event's at
       4. every event references an existing job (no orphaned history;
          redundant with the FK's ON DELETE RESTRICT, kept as belt-and-braces)
-    Stated here since Module 4; enforced nowhere until 2026-07-18. Callers
-    decide whether violations are fatal (build_demo: yes).
+    Callers decide whether violations are fatal (build_demo: yes).
     """
     problems: list[str] = []
 

@@ -1,4 +1,4 @@
-"""Module 1 (collect): fetch from each source, normalize, and persist with dedup.
+"""Collect: fetch from each source, normalize, and persist with dedup.
 Run: python -m src.collect
 """
 import time
