@@ -17,7 +17,7 @@ from src.core.storage import get_connection
 # often open to Turkey-based work; the scorer and human review refine those.
 ELIGIBLE_HINTS = (
     "worldwide", "anywhere", "global", "emea", "europe",
-    "turkey", "turkiye",
+    "turkey", "turkiye", "türkiye",
 )
 
 # Career ladder. First match wins; sets ladder_match.

@@ -8,7 +8,7 @@ from src.core.prefilter import evaluate, is_relevant_title, is_remote_eligible, 
     [
         ("Worldwide", True),
         ("Americas, Europe", True),
-        ("Türkiye", False),          # diacritic form is not in the allowlist
+        ("Türkiye", True),           # diacritic spelling accepted
         ("Turkey", True),
         ("United States", False),
         ("", True),                  # unspecified: ambiguous, left to the scorer
