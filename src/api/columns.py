@@ -34,6 +34,10 @@ WITHHELD: tuple[str, ...] = (
     "cover_letter",
     # hand-written private commentary on individual applications.
     "notes",
+    # eligibility gate verdicts (2026-10-02). Not sensitive; held private
+    # until the gate has a track record. Publishing means: move to PUBLIC,
+    # extend the grant in db/roles.sql, re-run grant_parity.
+    "eligibility", "eligibility_reason",
 )
 
 # job_events: the transitions ARE the public evidence; the notes are running

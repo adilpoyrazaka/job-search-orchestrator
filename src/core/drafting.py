@@ -243,6 +243,7 @@ def run_drafting(conn, client, profile_text, limit=None, min_score=None):
 
     sql = ("SELECT id, title, company, location, description FROM jobs "
            "WHERE relevance_score >= %s AND status = 'new' "
+           "AND eligibility IS DISTINCT FROM 'blocked' "
            "ORDER BY relevance_score DESC, id")
     params = [min_score]
     if limit is not None:

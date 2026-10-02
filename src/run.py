@@ -1,6 +1,6 @@
-"""Single-command orchestrator: collect -> prefilter -> score -> draft.
+"""Single-command orchestrator: collect -> prefilter -> eligibility -> score -> draft.
 
-Runs the four IDEMPOTENT stages in sequence, sharing one connection, one
+Runs the five IDEMPOTENT stages in sequence, sharing one connection, one
 Anthropic client, and one loaded profile. Any stage failure stops the run
 hard (fail-fast): drafting on a partially-scored pool would waste Sonnet
 tokens on the wrong jobs and hide the failure. Because every stage is
@@ -42,7 +42,7 @@ def _require_api_key() -> None:
 
 def run_all(skip_collect: bool = False, draft_limit: int | None = None,
             min_score: int | None = None) -> dict:
-    """Assemble shared resources once, then run the four stages in order.
+    """Assemble shared resources once, then run the five stages in order.
 
     Returns a combined totals dict. Raises on the first stage that fails --
     the caller (or _main) surfaces which stage died.
@@ -69,6 +69,7 @@ def run_all(skip_collect: bool = False, draft_limit: int | None = None,
     client = Anthropic()          # reads ANTHROPIC_API_KEY from environment
     profile = load_profile()
 
+    from src.core.eligibility import run_eligibility
     from src.core.prefilter import run_prefilter
     from src.core.scoring import run_scoring
     from src.core.drafting import run_drafting
@@ -78,6 +79,10 @@ def run_all(skip_collect: bool = False, draft_limit: int | None = None,
         print("[run] === prefilter ===")
         totals["prefilter"] = run_prefilter(conn)
         conn.commit()   # run.py owns prefilter's boundary now
+
+        print("[run] === eligibility ===")
+        totals["eligibility"] = run_eligibility(conn)
+        conn.commit()   # gate before scoring: blocked rows never cost a token
 
         print("[run] === score ===")
         totals["score"] = run_scoring(conn, client)

@@ -102,7 +102,8 @@ def run_scoring(conn, client, limit=None):
     not apply here.
     """
     sql = ("SELECT id, title, company, location, description FROM jobs "
-           "WHERE prefilter_pass = 1 AND relevance_score IS NULL")
+           "WHERE prefilter_pass = 1 AND relevance_score IS NULL "
+           "AND eligibility IS DISTINCT FROM 'blocked'")
     if limit:
         sql += f" LIMIT {int(limit)}"
     rows = conn.execute(sql).fetchall()

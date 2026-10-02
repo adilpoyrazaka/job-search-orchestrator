@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     ladder_match      text,
     relevance_score   integer,
     score_reason      text,
+    -- eligibility gate (src/core/eligibility.py): blocked | clear | unknown
+    eligibility        text,
+    eligibility_reason text,
     -- tracking
     status            text NOT NULL DEFAULT 'new',
     status_updated_at timestamptz,
@@ -55,3 +58,8 @@ CREATE TABLE IF NOT EXISTS job_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_job_at ON job_events (job_id, at);
+
+-- Columns added after the first deploy. CREATE TABLE IF NOT EXISTS never
+-- alters an existing table, so each later column is also added here.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS eligibility text;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS eligibility_reason text;
